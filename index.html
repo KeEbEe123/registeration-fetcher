@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Leaderboard</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+      }
+      h1 {
+        text-align: center;
+      }
+      ul {
+        list-style: none;
+        padding: 0;
+        max-width: 400px;
+        margin: 20px auto;
+      }
+      li {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px;
+        border: 1px solid #ccc;
+        margin-bottom: 5px;
+        border-radius: 4px;
+      }
+      li span {
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Leaderboard</h1>
+    <ul id="leaderboard"></ul>
+
+    <script>
+      const API_URL = `https://sheets.googleapis.com/v4/spreadsheets/1_3yNjbYJX5saSQ58ZkKcQPWUAoU-Ub-82dZoxPmoqbk/values/Sheet1!A:B?key=AIzaSyCueyw2JRCkJ6SELNEfenaBkg5zJlldtzE`;
+
+      async function fetchLeaderboardData() {
+        try {
+          const response = await fetch(API_URL);
+          const data = await response.json();
+
+          // Check if data exists
+          if (!data.values || data.values.length < 2) {
+            console.error("No valid data in the sheet.");
+            return [];
+          }
+
+          const rows = data.values.slice(1); // Skip the header row
+          const aggregatedData = {};
+          const seenNames = new Set();
+
+          rows.forEach((row) => {
+            const name = row[0]?.trim();
+            const count = parseInt(row[1]) || 0;
+
+            // Only add the count if the name hasn't been processed before
+            if (name && !seenNames.has(name)) {
+              aggregatedData[name] = (aggregatedData[name] || 0) + count;
+              seenNames.add(name); // Mark the name as processed
+            }
+          });
+
+          // Convert aggregated data into an array and sort by count
+          return Object.entries(aggregatedData)
+            .map(([name, count]) => ({ name, count }))
+            .sort((a, b) => b.count - a.count);
+        } catch (error) {
+          console.error("Error fetching leaderboard data:", error);
+          return [];
+        }
+      }
+
+      async function updateLeaderboard() {
+        const leaderboardData = await fetchLeaderboardData();
+        const leaderboardList = document.getElementById("leaderboard");
+
+        leaderboardList.innerHTML = leaderboardData
+          .map(
+            (entry) =>
+              `<li><span>${entry.name}</span><span>${entry.count}</span></li>`
+          )
+          .join("");
+      }
+
+      // Fetch leaderboard data and update the page every 10 seconds
+      updateLeaderboard();
+      setInterval(updateLeaderboard, 10000);
+    </script>
+  </body>
+</html>
